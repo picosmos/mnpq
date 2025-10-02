@@ -26,6 +26,15 @@ type Direction =
 // Random number generator
 let rnd = Random()
 
+// Safe power calculation using long to handle larger numbers
+let safePowerLong n m =
+    try
+        let result = Math.Pow(float n, float m)
+        if result > float Int64.MaxValue then Int64.MaxValue
+        else int64 result
+    with
+    | _ -> Int64.MaxValue
+
 // Modern ANSI color system with RGB support
 module Colors =
     // ANSI escape codes for 24-bit RGB colors
@@ -42,10 +51,10 @@ module Colors =
     let getColorCode value n m =
         if value = 0 then rgb 64 64 64  // Dark gray for empty cells
         else
-            let target = pown n m
-            let doubleTarget = pown n (2 * m)
+            let target = safePowerLong n m
+            let doubleTarget = safePowerLong n (2 * m)
             
-            if value <= target then
+            if int64 value <= target then
                 // Gradient from beige to red for values up to n^m
                 let logValue = Math.Log(float value) / Math.Log(float n)
                 let progress = logValue / (float m)
@@ -63,7 +72,7 @@ module Colors =
                         interpolateRgb (255, 69, 0) (139, 0, 0) ((t - 0.75) * 4.0)  // Red-Orange to Dark Red
                 
                 rgb r g b
-            elif value <= doubleTarget then
+            elif int64 value <= doubleTarget then
                 // Gradient from violet to deep purple for values above n^m
                 let logValue = Math.Log(float value) / Math.Log(float n)
                 let progress = (logValue - (float m)) / (float m)
@@ -246,8 +255,8 @@ let isGameOver state =
 
 // Check win condition
 let checkWin state =
-    let target = pown state.N state.M
-    state.Grid |> Array.exists (Array.exists ((=) target))
+    let target = safePowerLong state.N state.M
+    state.Grid |> Array.exists (Array.exists (fun v -> int64 v = target))
 
 // Input result type
 type InputResult =
@@ -321,7 +330,7 @@ let rec gameLoop state =
     
     if hasWonNow && not stateWithNumber.HasWon then
         Console.ForegroundColor <- ConsoleColor.Green
-        printfn "\nCONGRATULATIONS! You reached %d! You won the game!" (pown updatedState.N updatedState.M)
+        printfn "\nCONGRATULATIONS! You reached %d! You won the game!" (safePowerLong updatedState.N updatedState.M)
         Console.ResetColor()
         printfn "You can continue playing..."
         System.Threading.Thread.Sleep(2000)
@@ -357,14 +366,37 @@ let initializeGame n m p q =
     // Spawn two initial numbers
     initialState |> spawnNumber |> spawnNumber
 
+// Validate command line parameters
+let validateParameters n m p q =
+    let errors = [
+        if n < 2 then yield sprintf "Base number (n) must be >= 2, got %d" n
+        if m < 2 then yield sprintf "Winner exponent (m) must be >= 2, got %d" m
+        if p < n then yield sprintf "Grid height (p) must be >= n (%d), got %d" n p
+        if q < n then yield sprintf "Grid width (q) must be >= n (%d), got %d" n q
+    ]
+    
+    if not errors.IsEmpty then
+        Console.ForegroundColor <- ConsoleColor.Red
+        printfn "Parameter validation failed:"
+        errors |> List.iter (printfn "  • %s")
+        Console.ResetColor()
+        printfn "\nGame requirements:"
+        printfn "  - Base number (n) >= 2 (need at least binary merge)"
+        printfn "  - Winner exponent (m) >= 2 (meaningful target)"
+        printfn "  - Grid height (p) >= n (fit merge sequences)"
+        printfn "  - Grid width (q) >= n (fit merge sequences)"
+        false
+    else
+        true
+
 // Main entry point
 [<EntryPoint>]
 let main args =
-    let nOption = Option<int>("-n", getDefaultValue = (fun () -> 2), description = "Base number (default: 2)")
-    let mOption = Option<int>("-m", getDefaultValue = (fun () -> 11), description = "Winner exponent (default: 11)")
-    let pOption = Option<int>("-p", getDefaultValue = (fun () -> 4), description = "Grid height (default: 4)")
-    let qOption = Option<int>("-q", getDefaultValue = (fun () -> 4), description = "Grid width (default: 4)")
-    
+    let nOption = Option<int>("-n", getDefaultValue = (fun () -> 2), description = "Base number")
+    let mOption = Option<int>("-m", getDefaultValue = (fun () -> 11), description = "Winner exponent")
+    let pOption = Option<int>("-p", getDefaultValue = (fun () -> 4), description = "Grid height")
+    let qOption = Option<int>("-q", getDefaultValue = (fun () -> 4), description = "Grid width")
+
     let rootCommand = RootCommand("MNPQ - A customizable 2048-like game")
     rootCommand.AddOption(nOption)
     rootCommand.AddOption(mOption) 
@@ -372,13 +404,16 @@ let main args =
     rootCommand.AddOption(qOption)
     
     rootCommand.SetHandler(Action<int, int, int, int>(fun n m p q ->
-        printfn "Starting MNPQ game with n=%d, m=%d, p=%d, q=%d" n m p q
-        printfn "Goal: Reach %d to win!" (pown n m)
-        printfn "Press any key to start..."
-        Console.ReadKey() |> ignore
-        
-        let initialState = initializeGame n m p q
-        gameLoop initialState
+        if validateParameters n m p q then
+            printfn "Starting MNPQ game with n=%d, m=%d, p=%d, q=%d" n m p q
+            printfn "Goal: Reach %d to win!" (safePowerLong n m)
+            printfn "Press any key to start..."
+            Console.ReadKey() |> ignore
+            
+            let initialState = initializeGame n m p q
+            gameLoop initialState
+        else
+            printfn "\nUse --help for more information about valid parameter ranges."
     ), nOption, mOption, pOption, qOption)
     
     rootCommand.Invoke(args)
