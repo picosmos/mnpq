@@ -45,8 +45,8 @@ module Colors =
     
     // Interpolate between two RGB colors
     let interpolateRgb (r1, g1, b1) (r2, g2, b2) t =
-        let lerp a b t = int (float a + t * (float b - float a))
-        (lerp r1 r2 t, lerp g1 g2 t, lerp b1 b2 t)
+        let calcComponent a b t = int (float a + t * (float b - float a))
+        (calcComponent r1 r2 t, calcComponent g1 g2 t, calcComponent b1 b2 t)
     
     // Color palette for different value ranges
     let getColorCode value n m =
@@ -181,6 +181,7 @@ let merge n (grid: int[][]) =
     grid |> Array.map (mergeRow n)
 
 
+let borderColor = Colors.rgb 128 128 128
 
 // Helper function to render a single cell to string
 let renderCellToString value n m cellWidth =
@@ -191,8 +192,8 @@ let renderCellToString value n m cellWidth =
         else 
             let valueStr = value.ToString()
             valueStr.PadLeft(cellWidth)
-    
-    sprintf "%s│%s%s%s" (Colors.rgb 128 128 128) colorCode displayValue Colors.reset
+
+    sprintf "%s│%s%s%s" borderColor colorCode displayValue Colors.reset
 
 // Render the entire grid with modern ANSI colors using StringBuilder
 let renderGrid (state: GameState) =
@@ -201,10 +202,9 @@ let renderGrid (state: GameState) =
     let sb = System.Text.StringBuilder()
     let cellWidth = getCellWidth state.Grid
     let borderWidth = String.replicate cellWidth "─"
-    let greyColor = Colors.rgb 128 128 128  // Medium grey for grid borders
     
     // Top border
-    sb.Append(sprintf "%s┌" greyColor) |> ignore
+    sb.Append(sprintf "%s┌" borderColor) |> ignore
     for j in 0 .. state.Q - 1 do
         sb.Append(borderWidth) |> ignore
         if j < state.Q - 1 then sb.Append("┬") |> ignore else sb.Append("┐") |> ignore
@@ -216,19 +216,19 @@ let renderGrid (state: GameState) =
             if j < state.Q then
                 sb.Append(renderCellToString state.Grid.[i].[j] state.N state.M cellWidth) |> ignore
             else
-                sb.Append(sprintf "%s│%s" greyColor Colors.reset) |> ignore
+                sb.Append(sprintf "%s│%s" borderColor Colors.reset) |> ignore
         sb.AppendLine() |> ignore
         
         // Horizontal separator (except for last row)
         if i < state.P - 1 then
-            sb.Append(sprintf "%s├" greyColor) |> ignore
+            sb.Append(sprintf "%s├" borderColor) |> ignore
             for j in 0 .. state.Q - 1 do
                 sb.Append(borderWidth) |> ignore
                 if j < state.Q - 1 then sb.Append("┼") |> ignore else sb.Append("┤") |> ignore
             sb.AppendLine(Colors.reset) |> ignore
     
     // Bottom border
-    sb.Append(sprintf "%s└" greyColor) |> ignore
+    sb.Append(sprintf "%s└" borderColor) |> ignore
     for j in 0 .. state.Q - 1 do
         sb.Append(borderWidth) |> ignore
         if j < state.Q - 1 then sb.Append("┴") |> ignore else sb.Append("┘") |> ignore
