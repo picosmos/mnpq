@@ -110,14 +110,10 @@ let renderGrid (state: GameState) =
     
     // Top border
     printf "┌"
-    for _ in 1 .. state.Q do printf "───┬"
-    printfn "───┐" |> ignore
-    printf "└" |> ignore
-    for _ in 1 .. state.Q - 1 do printf "───┴"
-    printfn "───┘" |> ignore
-    printf "┌"
-    for _ in 1 .. state.Q do printf "───┬"
-    printfn "───┐"
+    for j in 0 .. state.Q - 1 do
+        printf "───"
+        if j < state.Q - 1 then printf "┬" else printf "┐"
+    printfn ""
     
     // Grid content
     for i in 0 .. state.P - 1 do
@@ -218,7 +214,7 @@ let rec gameLoop state =
     
     if hasWonNow && not stateWithNumber.HasWon then
         Console.ForegroundColor <- ConsoleColor.Green
-        printfn "\n🎉 CONGRATULATIONS! You reached %d! You won the game! 🎉" (pown updatedState.N updatedState.M)
+        printfn "\nCONGRATULATIONS! You reached %d! You won the game!" (pown updatedState.N updatedState.M)
         Console.ResetColor()
         printfn "You can continue playing..."
         System.Threading.Thread.Sleep(2000)
@@ -226,7 +222,7 @@ let rec gameLoop state =
     // Check game over
     if isGameOver updatedState then
         Console.ForegroundColor <- ConsoleColor.Red
-        printfn "\n💀 GAME OVER! No more moves possible."
+        printfn "\nGAME OVER! No more moves possible."
         Console.ResetColor()
     else
         // Get user input
