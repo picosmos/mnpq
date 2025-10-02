@@ -30,14 +30,14 @@ The game accepts four customizable parameters:
 
 | Parameter | Flag | Default | Description |
 |-----------|------|---------|-------------|
-| **Base Number** | `-n` | `2` | Number used for spawning and merging |
-| **Winner Exponent** | `-m` | `11` | Target is n^m (default: 2¹¹ = 2048) |
+| **Base Number** | `-m` | `2` | Number used for spawning and merging |
+| **Winner Exponent** | `-n` | `11` | Target is n^m (default: 2¹¹ = 2048) |
 | **Grid Height** | `-p` | `4` | Number of rows |
 | **Grid Width** | `-q` | `4` | Number of columns |
 
 ### Parameter Rules
 - `n >= 2` (minimum binary merge)
-- `m >= 2` (meaningful target)  
+- `n >= 2` (meaningful target)  
 - `p >= n` (fit merge sequences)
 - `q >= n` (fit merge sequences)
 
@@ -45,7 +45,7 @@ The game accepts four customizable parameters:
 
 ### Classic 2048
 ```bash
-dotnet run -- -n 2 -m 11 -p 4 -q 4
+dotnet run -- -n 2 -n 11 -p 4 -q 4
 ```
 **Target**: 2048 on a 4×4 grid
 
@@ -53,27 +53,27 @@ This is the same as running just `dotnet run`.
 
 ### Easy Mode (Smaller Target)
 ```bash
-dotnet run -- -n 2 -m 6 -p 4 -q 4
+dotnet run -- -m 2 -n 6 -p 4 -q 4
 ```
 **Target**: 64 on a 4×4 grid
 
 ### Hard Mode (Larger Grid)
 ```bash
-dotnet run -- -n 2 -m 11 -p 6 -q 6
+dotnet run -- -m 2 -n 11 -p 6 -q 6
 ```
 **Target**: 2048 on a 6×6 grid
 
 ### Custom Game (Base 3)
 ```bash
-dotnet run -- -n 3 -m 4 -p 3 -q 3
+dotnet run -- -m 3 -n 6 -p 5 -q 5
 ```
-**Target**: 81 (3⁴) on a 3×3 grid with base-3 merging
+**Target**: 81 (3⁶) on a 5×5 grid with base-3 merging
 
 ### Extreme Challenge
 ```bash
-dotnet run -- -n 4 -m 6 -p 4 -q 4
+dotnet run -- -m 4 -n 4 -p 4 -q 4
 ```
-**Target**: 4096 (4⁶) on a 5×5 grid
+**Target**: 4096 (4⁶) on a 4×4 grid
 
 ## Features
 
