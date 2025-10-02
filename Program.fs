@@ -185,10 +185,22 @@ type InputResult =
     | Continue
     | Invalid
 
-// Get user input
+// Clear any buffered input from the console
+let clearInputBuffer () =
+    while Console.KeyAvailable do
+        Console.ReadKey(true) |> ignore
+
+// Get user input (clears buffer first to prevent input accumulation)
 let getUserInput () =
+    // Clear any buffered keys first
+    clearInputBuffer()
+    
     printf "Use arrow keys to move, 'q' to quit: "
     let key = Console.ReadKey(true)
+    
+    // Clear buffer again after reading to prevent double input
+    clearInputBuffer()
+    
     match key.Key with
     | ConsoleKey.LeftArrow -> Move Left
     | ConsoleKey.RightArrow -> Move Right
@@ -202,6 +214,9 @@ let getUserInput () =
 
 // Main game loop (recursive)
 let rec gameLoop state =
+    // Clear any residual input at start of each loop iteration
+    clearInputBuffer()
+    
     // Spawn number
     let stateWithNumber = spawnNumber state
     
@@ -241,6 +256,8 @@ let rec gameLoop state =
             if not (gridsEqual oldGrid newState.Grid) then
                 // Animate transformation
                 renderAnimated updatedState newState
+                // Clear any accumulated input after animation
+                clearInputBuffer()
                 // Continue game loop
                 gameLoop newState
             else
