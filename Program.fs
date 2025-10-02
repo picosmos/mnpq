@@ -26,17 +26,39 @@ type Direction =
 // Random number generator
 let rnd = Random()
 
-// Color codes for console output
-let getColor value n =
+// Color codes for console output - scale from white to red at n^m, then violet/blue to n^(2m)
+let getColor value n m =
     if value = 0 then ConsoleColor.Black
     else
-        let logValue = Math.Log(float value) / Math.Log(float n)
-        match int logValue with
-        | x when x <= 1 -> ConsoleColor.White        // beige
-        | x when x <= 2 -> ConsoleColor.Yellow       
-        | x when x <= 3 -> ConsoleColor.DarkYellow   // orange
-        | x when x <= 4 -> ConsoleColor.Red          
-        | _ -> ConsoleColor.Magenta                   // violet
+        let target = pown n m
+        let doubleTarget = pown n (2 * m)
+        if value <= target then
+            // Scale from white to red for values up to n^m
+            let logValue = Math.Log(float value) / Math.Log(float n)
+            let scaledValue = logValue / (float m)
+            match scaledValue with
+            | x when x <= 0.2 -> ConsoleColor.White        // beige/white
+            | x when x <= 0.4 -> ConsoleColor.Yellow       
+            | x when x <= 0.6 -> ConsoleColor.DarkYellow   // orange
+            | x when x <= 0.8 -> ConsoleColor.Red
+            | _ -> ConsoleColor.DarkRed                     // dark red at n^m
+        else
+            // Scale from violet to blue for values above n^m up to n^(2m)
+            if value <= doubleTarget then
+                ConsoleColor.Magenta                        // violet
+            else
+                ConsoleColor.Blue                           // blue for very high values
+
+// Calculate appropriate cell width based on the largest number in the grid
+let getCellWidth (grid: int[][]) =
+    let maxValue = 
+        grid 
+        |> Array.collect id 
+        |> Array.max
+    if maxValue = 0 then 3
+    else
+        let digits = maxValue.ToString().Length
+        max 3 digits
 
 // Helper functions for immutable array operations
 let updateAt index value (arr: 'a[]) =
@@ -97,21 +119,36 @@ let merge n (grid: int[][]) =
     grid |> Array.map (mergeRow n)
 
 // Render a single cell with borders and colors
-let renderCell value n =
-    let color = getColor value n
-    let displayValue = if value = 0 then "   " else sprintf "%3d" value
+let renderCell value n m cellWidth =
+    let color = getColor value n m
+    let displayValue = 
+        if value = 0 then 
+            String.replicate cellWidth " " 
+        else 
+            let valueStr = value.ToString()
+            valueStr.PadLeft(cellWidth)
+    
+    // Render border in white, content in color
+    Console.ForegroundColor <- ConsoleColor.White
+    printf "│"
     Console.ForegroundColor <- color
-    printf "│%s" displayValue
+    printf "%s" displayValue
     Console.ResetColor()
 
 // Render the entire grid
 let renderGrid (state: GameState) =
     Console.Clear()
     
+    let cellWidth = getCellWidth state.Grid
+    let borderWidth = String.replicate cellWidth "─"
+    
+    // Set border color to white
+    Console.ForegroundColor <- ConsoleColor.White
+    
     // Top border
     printf "┌"
     for j in 0 .. state.Q - 1 do
-        printf "───"
+        printf "%s" borderWidth
         if j < state.Q - 1 then printf "┬" else printf "┐"
     printfn ""
     
@@ -119,7 +156,7 @@ let renderGrid (state: GameState) =
     for i in 0 .. state.P - 1 do
         for j in 0 .. state.Q do
             if j < state.Q then
-                renderCell state.Grid.[i].[j] state.N
+                renderCell state.Grid.[i].[j] state.N state.M cellWidth
             else
                 printf "│"
         printfn ""
@@ -128,16 +165,18 @@ let renderGrid (state: GameState) =
         if i < state.P - 1 then
             printf "├"
             for j in 0 .. state.Q - 1 do
-                printf "───"
+                printf "%s" borderWidth
                 if j < state.Q - 1 then printf "┼" else printf "┤"
             printfn ""
     
     // Bottom border
     printf "└"
     for j in 0 .. state.Q - 1 do
-        printf "───"
+        printf "%s" borderWidth
         if j < state.Q - 1 then printf "┴" else printf "┘"
     printfn ""
+    
+    Console.ResetColor()
 
 // Animated render (simplified - shows before and after states)
 let renderAnimated oldState newState =
