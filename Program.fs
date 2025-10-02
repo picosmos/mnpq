@@ -1,10 +1,13 @@
-﻿open System
-open System.CommandLine
-open System.CommandLine.Parsing
+﻿module picosmos
 
-// Game state types
+open System
+open System.CommandLine
+open picosmos.CommandLineInterface
+
+type GridArray = int[][]
+
 type GameState = {
-    Grid: int[][]
+    Grid: GridArray
     N: int
     M: int
     P: int
@@ -24,10 +27,8 @@ type Direction =
     | Up
     | Down
 
-// Random number generator
 let rnd = Random()
 
-// Safe power calculation using long to handle larger numbers
 let safePowerLong n m =
     try
         let result = Math.Pow(float n, float m)
@@ -36,102 +37,65 @@ let safePowerLong n m =
     with
     | _ -> Int64.MaxValue
 
-// Modern ANSI color system with RGB support
-module Colors =
-    // ANSI escape codes for 24-bit RGB colors
-    let rgb r g b = sprintf "\x1b[38;2;%d;%d;%dm" r g b
-    let bgRgb r g b = sprintf "\x1b[48;2;%d;%d;%dm" r g b
-    let reset = "\x1b[0m"
-    
-    // Interpolate between two RGB colors
-    let interpolateRgb (r1, g1, b1) (r2, g2, b2) t =
-        let calcComponent a b t = int (float a + t * (float b - float a))
-        (calcComponent r1 r2 t, calcComponent g1 g2 t, calcComponent b1 b2 t)
-    
-    // Color palette for different value ranges
-    let getColorCode value n m =
-        if value = 0 then rgb 64 64 64  // Dark gray for empty cells
-        else
-            let target = safePowerLong n m
-            let doubleTarget = safePowerLong n (2 * m)
+let getColorCode value n m =
+    if value = 0 then Colors.rgb 64 64 64  // Dark gray for empty cells
+    else
+        let target = safePowerLong n m
+        let doubleTarget = safePowerLong n (2 * m)
+        
+        if int64 value <= target then
+            // Gradient from beige to red for values up to n^m
+            let logValue = Math.Log(float value) / Math.Log(float n)
+            let progress = logValue / (float m)
+            let t = max 0.0 (min 1.0 progress)
             
-            if int64 value <= target then
-                // Gradient from beige to red for values up to n^m
-                let logValue = Math.Log(float value) / Math.Log(float n)
-                let progress = logValue / (float m)
-                let t = max 0.0 (min 1.0 progress)
-                
-                // Color stops: Beige → Light Orange → Orange → Red → Dark Red
-                let (r, g, b) = 
-                    if t <= 0.25 then
-                        interpolateRgb (245, 245, 220) (255, 218, 185) (t * 4.0)  // Beige to Peach
-                    elif t <= 0.5 then
-                        interpolateRgb (255, 218, 185) (255, 165, 0) ((t - 0.25) * 4.0)  // Peach to Orange
-                    elif t <= 0.75 then
-                        interpolateRgb (255, 165, 0) (255, 69, 0) ((t - 0.5) * 4.0)  // Orange to Red-Orange
-                    else
-                        interpolateRgb (255, 69, 0) (139, 0, 0) ((t - 0.75) * 4.0)  // Red-Orange to Dark Red
-                
-                rgb r g b
-            elif int64 value <= doubleTarget then
-                // Gradient from violet to deep purple for values above n^m
-                let logValue = Math.Log(float value) / Math.Log(float n)
-                let progress = (logValue - (float m)) / (float m)
-                let t = max 0.0 (min 1.0 progress)
-                
-                let (r, g, b) = interpolateRgb (148, 0, 211) (75, 0, 130) t  // Violet to Indigo
-                rgb r g b
-            else
-                // Electric colors for extremely high values
-                let logValue = Math.Log(float value) / Math.Log(float n)
-                let progress = (logValue - (float (2 * m))) / (float m)
-                let t = max 0.0 (min 1.0 progress)
-                
-                let (r, g, b) = interpolateRgb (0, 191, 255) (0, 255, 255) t  // Deep Sky Blue to Cyan
-                rgb r g b
+            // Color stops: Beige → Light Orange → Orange → Red → Dark Red
+            let (r, g, b) = 
+                if t <= 0.25 then
+                    Colors.interpolateRgb (245, 245, 220) (255, 218, 185) (t * 4.0)  // Beige to Peach
+                elif t <= 0.5 then
+                    Colors.interpolateRgb (255, 218, 185) (255, 165, 0) ((t - 0.25) * 4.0)  // Peach to Orange
+                elif t <= 0.75 then
+                    Colors.interpolateRgb (255, 165, 0) (255, 69, 0) ((t - 0.5) * 4.0)  // Orange to Red-Orange
+                else
+                    Colors.interpolateRgb (255, 69, 0) (139, 0, 0) ((t - 0.75) * 4.0)  // Red-Orange to Dark Red
+            
+            Colors.rgb r g b
+        elif int64 value <= doubleTarget then
+            // Gradient from violet to deep purple for values above n^m
+            let logValue = Math.Log(float value) / Math.Log(float n)
+            let progress = (logValue - (float m)) / (float m)
+            let t = max 0.0 (min 1.0 progress)
 
-module Screen =
-    // ANSI escape sequences for alternate screen buffer
-    let enterAlternateScreen = "\x1b[?1049h"  // Enter alternate screen buffer
-    let exitAlternateScreen = "\x1b[?1049l"   // Exit alternate screen buffer
-    let clearScreen = "\x1b[2J\x1b[H"         // Clear screen and move cursor to top-left
-    let hideCursor = "\x1b[?25l"              // Hide cursor
-    let showCursor = "\x1b[?25h"              // Show cursor
-    
-    // Initialize full-screen mode
-    let enterFullScreen () =
-        printf "%s%s%s" enterAlternateScreen clearScreen hideCursor
-        Console.Out.Flush()
-    
-    // Exit full-screen mode and restore terminal
-    let exitFullScreen () =
-        printf "%s%s" showCursor exitAlternateScreen
-        Console.Out.Flush()
+            let (r, g, b) = Colors.interpolateRgb (148, 0, 211) (75, 0, 130) t  // Violet to Indigo
+            Colors.rgb r g b
+        else
+            // Electric colors for extremely high values
+            let logValue = Math.Log(float value) / Math.Log(float n)
+            let progress = (logValue - (float (2 * m))) / (float m)
+            let t = max 0.0 (min 1.0 progress)
+            
+            let (r, g, b) = Colors.interpolateRgb (0, 191, 255) (0, 255, 255) t  // Deep Sky Blue to Cyan
+            Colors.rgb r g b
 
-// Enhanced color function that returns ANSI codes
-let getColorAnsi value n m = Colors.getColorCode value n m
+let getColorAnsi value n m = getColorCode value n m
 
-// Calculate appropriate cell width based on the largest number in the grid
-let getCellWidth (grid: int[][]) =
+let getCellWidth (grid: GridArray) =
     let maxValue = 
         grid 
         |> Array.collect id 
         |> Array.max
-    if maxValue = 0 then 3
-    else
-        let digits = maxValue.ToString().Length
-        max 3 digits
+    let digits = maxValue.ToString().Length
+    max 3 digits
 
-// Helper functions for immutable array operations
-let updateAt index value (arr: 'a[]) =
+let updateAt index value (arr: 'a[]) : 'a[] =
     arr |> Array.mapi (fun i x -> if i = index then value else x)
 
-let update2D row col value (grid: int[][]) =
+let update2D row col value (grid: GridArray) =
     grid |> Array.mapi (fun i arr -> 
         if i = row then updateAt col value arr else arr)
 
-// Spawn a new number in a random empty cell
-let spawnNumber (state: GameState) =
+let spawnNumber (state: GameState) : GameState =
     let emptyCells = [
         for i in 0 .. state.P - 1 do
             for j in 0 .. state.Q - 1 do
@@ -148,105 +112,95 @@ let spawnNumber (state: GameState) =
                 state.N
         { state with Grid = update2D row col value state.Grid }
 
-// Rotate grid 90 degrees clockwise
-let rotate (grid: int[][]) =
+let rotate (grid: GridArray) : GridArray =
     let rows = Array.length grid
     let cols = Array.length grid.[0]
     Array.init cols (fun j -> 
         Array.init rows (fun i -> grid.[rows - 1 - i].[j]))
 
-// Merge a single row according to game rules
-let mergeRow n (row: int[]) =
-    let nonZeros = row |> Array.filter ((<>) 0)
-    let rec merge acc remaining =
-        match remaining with
-        | [] -> acc
-        | [x] -> acc @ [x]
-        | x :: xs ->
-            let consecutiveCount = xs |> List.takeWhile ((=) x) |> List.length
-            if consecutiveCount + 1 >= n then
-                let newValue = x * n
-                let remainingAfterMerge = xs |> List.skip (n - 1)
-                merge (acc @ [newValue]) remainingAfterMerge
-            else
-                merge (acc @ [x]) xs
-    
-    let merged = merge [] (Array.toList nonZeros)
-    let result = Array.create row.Length 0
-    merged |> List.iteri (fun i v -> result.[i] <- v)
-    result
-
-// Merge entire grid
-let merge n (grid: int[][]) =
+let merge n (grid: GridArray) : GridArray =
+    let mergeRow n (row: int[]) =
+        let nonZeros = row |> Array.filter ((<>) 0)
+        let rec merge acc remaining =
+            match remaining with
+            | [] -> acc
+            | [x] -> acc @ [x]
+            | x :: xs ->
+                let consecutiveCount = xs |> List.takeWhile ((=) x) |> List.length
+                if consecutiveCount + 1 >= n then
+                    let newValue = x * n
+                    let remainingAfterMerge = xs |> List.skip (n - 1)
+                    merge (acc @ [newValue]) remainingAfterMerge
+                else
+                    merge (acc @ [x]) xs
+        
+        let merged = merge [] (Array.toList nonZeros)
+        let result = Array.create row.Length 0
+        merged |> List.iteri (fun i v -> result.[i] <- v)
+        result
     grid |> Array.map (mergeRow n)
-
 
 let borderColor = Colors.rgb 128 128 128
 
-// Helper function to render a single cell to string
-let renderCellToString value n m cellWidth =
-    let colorCode = getColorAnsi value n m
-    let displayValue = 
-        if value = 0 then 
-            String.replicate cellWidth " " 
-        else 
-            let valueStr = value.ToString()
-            valueStr.PadLeft(cellWidth)
-
-    sprintf "%s│%s%s%s" borderColor colorCode displayValue Colors.reset
-
-// Render the entire grid with modern ANSI colors using StringBuilder
 let renderGrid (state: GameState) =
-    printf "%s" Screen.clearScreen
-    
-    let sb = System.Text.StringBuilder()
+    let sb = Text.StringBuilder()
     let cellWidth = getCellWidth state.Grid
     let borderWidth = String.replicate cellWidth "─"
+
+    let renderTopBorder() =
+        sb.Append(sprintf "%s┌" borderColor) |> ignore
+        for j in 0 .. state.Q - 1 do
+            sb.Append(borderWidth) |> ignore
+            if j < state.Q - 1 then sb.Append("┬") |> ignore else sb.Append("┐") |> ignore
+        sb.AppendLine(Colors.reset) |> ignore
+
+    let renderGridContent() =
+        let renderCellToString value n m cellWidth =
+            let colorCode = getColorAnsi value n m
+            let displayValue = 
+                if value = 0 then 
+                    String.replicate cellWidth " " 
+                else 
+                    let valueStr = value.ToString()
+                    valueStr.PadLeft(cellWidth)
+
+            sprintf "%s│%s%s%s" borderColor colorCode displayValue Colors.reset
+
+        for i in 0 .. state.P - 1 do
+            for j in 0 .. state.Q do
+                if j < state.Q then
+                    sb.Append(renderCellToString state.Grid.[i].[j] state.N state.M cellWidth) |> ignore
+                else
+                    sb.Append(sprintf "%s│%s" borderColor Colors.reset) |> ignore
+            sb.AppendLine() |> ignore
+            
+            if i < state.P - 1 then
+                sb.Append(sprintf "%s├" borderColor) |> ignore
+                for j in 0 .. state.Q - 1 do
+                    sb.Append(borderWidth) |> ignore
+                    if j < state.Q - 1 then sb.Append("┼") |> ignore else sb.Append("┤") |> ignore
+                sb.AppendLine(Colors.reset) |> ignore
     
-    // Top border
-    sb.Append(sprintf "%s┌" borderColor) |> ignore
-    for j in 0 .. state.Q - 1 do
-        sb.Append(borderWidth) |> ignore
-        if j < state.Q - 1 then sb.Append("┬") |> ignore else sb.Append("┐") |> ignore
-    sb.AppendLine(Colors.reset) |> ignore
+    let renderBottomBorder() =
+        sb.Append(sprintf "%s└" borderColor) |> ignore
+        for j in 0 .. state.Q - 1 do
+            sb.Append(borderWidth) |> ignore
+            if j < state.Q - 1 then sb.Append("┴") |> ignore else sb.Append("┘") |> ignore
+        sb.AppendLine(Colors.reset) |> ignore
     
-    // Grid content
-    for i in 0 .. state.P - 1 do
-        for j in 0 .. state.Q do
-            if j < state.Q then
-                sb.Append(renderCellToString state.Grid.[i].[j] state.N state.M cellWidth) |> ignore
-            else
-                sb.Append(sprintf "%s│%s" borderColor Colors.reset) |> ignore
-        sb.AppendLine() |> ignore
-        
-        // Horizontal separator (except for last row)
-        if i < state.P - 1 then
-            sb.Append(sprintf "%s├" borderColor) |> ignore
-            for j in 0 .. state.Q - 1 do
-                sb.Append(borderWidth) |> ignore
-                if j < state.Q - 1 then sb.Append("┼") |> ignore else sb.Append("┤") |> ignore
-            sb.AppendLine(Colors.reset) |> ignore
-    
-    // Bottom border
-    sb.Append(sprintf "%s└" borderColor) |> ignore
-    for j in 0 .. state.Q - 1 do
-        sb.Append(borderWidth) |> ignore
-        if j < state.Q - 1 then sb.Append("┴") |> ignore else sb.Append("┘") |> ignore
-    sb.AppendLine(Colors.reset) |> ignore
-    
-    // Output everything at once
+    renderTopBorder();
+    renderGridContent()
+    renderBottomBorder()
+
+    printf "%s" Screen.clearScreen
     printf "%s" (sb.ToString())
 
-// Animated render (simplified - shows before and after states)
 let renderAnimated oldState newState =
+    // todo: implement
     ()
-    // renderGrid oldState
-    // System.Threading.Thread.Sleep(150)
-    // renderGrid newState
-    // System.Threading.Thread.Sleep(150)
 
 // Check if two grids are equal
-let gridsEqual (grid1: int[][]) (grid2: int[][]) =
+let gridsEqual (grid1: GridArray) (grid2: GridArray) =
     Array.forall2 (Array.forall2 (=)) grid1 grid2
 
 // Transform state based on direction
@@ -454,15 +408,14 @@ let validateParameters n m p q =
         errors |> List.iter (printfn "  • %s")
         Console.ResetColor()
         printfn "\nGame requirements:"
-        printfn "  - Base number (n) >= 2 (need at least binary merge)"
-        printfn "  - Winner exponent (m) >= 2 (meaningful target)"
-        printfn "  - Grid height (p) >= n (fit merge sequences)"
-        printfn "  - Grid width (q) >= n (fit merge sequences)"
+        printfn " - Base number (n) >= 2 (need at least binary merge)"
+        printfn " - Winner exponent (m) >= 2 (meaningful target)"
+        printfn " - Grid height (p) >= n (fit merge sequences)"
+        printfn " - Grid width (q) >= n (fit merge sequences)"
         false
     else
         true
 
-// Main entry point
 [<EntryPoint>]
 let main args =
     let nOption = Option<int>("-n", getDefaultValue = (fun () -> 2), description = "Base number")
