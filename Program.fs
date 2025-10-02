@@ -206,10 +206,11 @@ let renderGrid (state: GameState) =
 
 // Animated render (simplified - shows before and after states)
 let renderAnimated oldState newState =
-    renderGrid oldState
-    System.Threading.Thread.Sleep(150)
-    renderGrid newState
-    System.Threading.Thread.Sleep(150)
+    ()
+    // renderGrid oldState
+    // System.Threading.Thread.Sleep(150)
+    // renderGrid newState
+    // System.Threading.Thread.Sleep(150)
 
 // Check if two grids are equal
 let gridsEqual (grid1: int[][]) (grid2: int[][]) =
