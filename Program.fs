@@ -277,15 +277,36 @@ let getUserInput () =
         if confirm.ToLower() = "y" then Quit else Continue
     | _ -> Invalid
 
-// Main game loop (recursive)
-let rec gameLoop state =
-    // Clear any residual input at start of each loop iteration
+// Input loop that repeats until a valid transformation occurs
+let rec getValidMove state =
+    // Clear any residual input
     clearInputBuffer()
     
-    // Spawn number
+    // Get user input
+    match getUserInput() with
+    | Quit -> None
+    | Continue -> getValidMove state
+    | Invalid -> 
+        printfn "\nInvalid input. Use arrow keys or 'q' to quit."
+        getValidMove state
+    | Move direction ->
+        // Transform state
+        let oldGrid = state.Grid
+        let newState = transformState direction state
+        
+        // Check if the move actually changed something
+        if not (gridsEqual oldGrid newState.Grid) then
+            Some newState  // Return the transformed state
+        else
+            printfn "\nNo change possible in that direction."
+            getValidMove state  // Ask for input again
+
+// Main game loop (recursive)
+let rec gameLoop state =
+    // Spawn number only at the start of each turn
     let stateWithNumber = spawnNumber state
     
-    // Render
+    // Render current state
     renderGrid stateWithNumber
     
     // Check win condition
@@ -305,29 +326,16 @@ let rec gameLoop state =
         printfn "\nGAME OVER! No more moves possible."
         Console.ResetColor()
     else
-        // Get user input
-        match getUserInput() with
-        | Quit -> printfn "\nThanks for playing!"
-        | Continue -> gameLoop updatedState
-        | Invalid -> 
-            printfn "\nInvalid input. Use arrow keys or 'q' to quit."
-            gameLoop updatedState
-        | Move direction ->
-            // Transform state
-            let oldGrid = updatedState.Grid
-            let newState = transformState direction updatedState
-            
-            // Only proceed if the move actually changed something
-            if not (gridsEqual oldGrid newState.Grid) then
-                // Animate transformation
-                renderAnimated updatedState newState
-                // Clear any accumulated input after animation
-                clearInputBuffer()
-                // Continue game loop
-                gameLoop newState
-            else
-                printfn "\nNo change possible in that direction."
-                gameLoop updatedState
+        // Keep asking for input until a valid move is made or user quits
+        match getValidMove updatedState with
+        | None -> printfn "\nThanks for playing!"  // User quit
+        | Some newState ->
+            // Animate the successful transformation
+            renderAnimated updatedState newState
+            // Clear any accumulated input after animation
+            clearInputBuffer()
+            // Continue game loop with the new state
+            gameLoop newState
 
 // Initialize game state
 let initializeGame n m p q =
