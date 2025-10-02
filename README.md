@@ -73,7 +73,7 @@ dotnet run -- -m 3 -n 6 -p 5 -q 5
 ```bash
 dotnet run -- -m 4 -n 4 -p 4 -q 4
 ```
-**Target**: 4096 (4⁶) on a 4×4 grid
+**Target**: 256 (4⁴) on a 4×4 grid
 
 ## Features
 
