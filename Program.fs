@@ -59,7 +59,7 @@ let spawnNumber (state: GameState) =
         let (row, col) = emptyCells.[rnd.Next(emptyCells.Length)]
         let value = 
             if rnd.NextDouble() < (1.0 / (float state.N ** float state.N)) then 
-                2 * state.N 
+                state.N * state.N 
             else 
                 state.N
         { state with Grid = update2D row col value state.Grid }
