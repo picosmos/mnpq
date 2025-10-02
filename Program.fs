@@ -152,8 +152,10 @@ let mergeRow n (row: int[]) =
 let merge n (grid: int[][]) =
     grid |> Array.map (mergeRow n)
 
-// Render a single cell with borders and colors using ANSI
-let renderCell value n m cellWidth =
+
+
+// Helper function to render a single cell to string
+let renderCellToString value n m cellWidth =
     let colorCode = getColorAnsi value n m
     let displayValue = 
         if value = 0 then 
@@ -162,47 +164,50 @@ let renderCell value n m cellWidth =
             let valueStr = value.ToString()
             valueStr.PadLeft(cellWidth)
     
-    // Render border in medium grey, content with RGB color
-    printf "%s│%s%s%s" (Colors.rgb 128 128 128) colorCode displayValue Colors.reset
+    sprintf "%s│%s%s%s" (Colors.rgb 128 128 128) colorCode displayValue Colors.reset
 
-// Render the entire grid with modern ANSI colors
+// Render the entire grid with modern ANSI colors using StringBuilder
 let renderGrid (state: GameState) =
     Console.Clear()
     
+    let sb = System.Text.StringBuilder()
     let cellWidth = getCellWidth state.Grid
     let borderWidth = String.replicate cellWidth "─"
     let greyColor = Colors.rgb 128 128 128  // Medium grey for grid borders
     
     // Top border
-    printf "%s┌" greyColor
+    sb.Append(sprintf "%s┌" greyColor) |> ignore
     for j in 0 .. state.Q - 1 do
-        printf "%s" borderWidth
-        if j < state.Q - 1 then printf "┬" else printf "┐"
-    printfn "%s" Colors.reset
+        sb.Append(borderWidth) |> ignore
+        if j < state.Q - 1 then sb.Append("┬") |> ignore else sb.Append("┐") |> ignore
+    sb.AppendLine(Colors.reset) |> ignore
     
     // Grid content
     for i in 0 .. state.P - 1 do
         for j in 0 .. state.Q do
             if j < state.Q then
-                renderCell state.Grid.[i].[j] state.N state.M cellWidth
+                sb.Append(renderCellToString state.Grid.[i].[j] state.N state.M cellWidth) |> ignore
             else
-                printf "%s│%s" greyColor Colors.reset
-        printfn ""
+                sb.Append(sprintf "%s│%s" greyColor Colors.reset) |> ignore
+        sb.AppendLine() |> ignore
         
         // Horizontal separator (except for last row)
         if i < state.P - 1 then
-            printf "%s├" greyColor
+            sb.Append(sprintf "%s├" greyColor) |> ignore
             for j in 0 .. state.Q - 1 do
-                printf "%s" borderWidth
-                if j < state.Q - 1 then printf "┼" else printf "┤"
-            printfn "%s" Colors.reset
+                sb.Append(borderWidth) |> ignore
+                if j < state.Q - 1 then sb.Append("┼") |> ignore else sb.Append("┤") |> ignore
+            sb.AppendLine(Colors.reset) |> ignore
     
     // Bottom border
-    printf "%s└" greyColor
+    sb.Append(sprintf "%s└" greyColor) |> ignore
     for j in 0 .. state.Q - 1 do
-        printf "%s" borderWidth
-        if j < state.Q - 1 then printf "┴" else printf "┘"
-    printfn "%s" Colors.reset
+        sb.Append(borderWidth) |> ignore
+        if j < state.Q - 1 then sb.Append("┴") |> ignore else sb.Append("┘") |> ignore
+    sb.AppendLine(Colors.reset) |> ignore
+    
+    // Output everything at once
+    printf "%s" (sb.ToString())
 
 // Animated render (simplified - shows before and after states)
 let renderAnimated oldState newState =
