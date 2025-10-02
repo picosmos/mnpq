@@ -96,11 +96,12 @@ let update2D row col value (grid: GridArray) =
         if i = row then updateAt col value arr else arr)
 
 let spawnNumber (state: GameState) : GameState =
-    let emptyCells = [
-        for i in 0 .. state.P - 1 do
-            for j in 0 .. state.Q - 1 do
-                if state.Grid.[i].[j] = 0 then yield (i, j)
-    ]
+    let emptyCells = 
+        state.Grid
+        |> Seq.mapi (fun i row ->
+            row |> Seq.mapi (fun j value -> if value = 0 then Some (i, j) else None))
+        |> Seq.collect (Seq.choose id)
+        |> Seq.toList
     
     if emptyCells.IsEmpty then state
     else
@@ -146,16 +147,16 @@ let renderGridAsString (state: GameState) : string =
     let sb = Text.StringBuilder()
     let cellWidth = getCellWidth state.Grid
     let borderWidth = String.replicate cellWidth "─"
+    let borderSegments = 
+        state.Grid.[0] 
+        |> Array.map (fun _ -> borderWidth)
 
     let renderTopBorder() =
-        sb.Append(sprintf "%s┌" borderColor) |> ignore
-        for j in 0 .. state.Q - 1 do
-            sb.Append(borderWidth) |> ignore
-            if j < state.Q - 1 then sb.Append("┬") |> ignore else sb.Append("┐") |> ignore
-        sb.AppendLine(Colors.reset) |> ignore
+        sb.Append(sprintf "%s┌%s┐%s" borderColor (String.Join("┬", borderSegments)) Colors.reset) |> ignore
+        sb.AppendLine() |> ignore
 
     let renderGridContent() =
-        let renderCellToString value n m cellWidth =
+        let renderCellContent value n m cellWidth =
             let colorCode = getColorAnsi value n m
             let displayValue = 
                 if value = 0 then 
@@ -163,30 +164,22 @@ let renderGridAsString (state: GameState) : string =
                 else 
                     let valueStr = value.ToString()
                     valueStr.PadLeft(cellWidth)
+            sprintf "%s%s%s" colorCode displayValue Colors.reset
 
-            sprintf "%s│%s%s%s" borderColor colorCode displayValue Colors.reset
-
-        for i in 0 .. state.P - 1 do
-            for j in 0 .. state.Q do
-                if j < state.Q then
-                    sb.Append(renderCellToString state.Grid.[i].[j] state.N state.M cellWidth) |> ignore
-                else
-                    sb.Append(sprintf "%s│%s" borderColor Colors.reset) |> ignore
-            sb.AppendLine() |> ignore
-            
-            if i < state.P - 1 then
-                sb.Append(sprintf "%s├" borderColor) |> ignore
-                for j in 0 .. state.Q - 1 do
-                    sb.Append(borderWidth) |> ignore
-                    if j < state.Q - 1 then sb.Append("┼") |> ignore else sb.Append("┤") |> ignore
-                sb.AppendLine(Colors.reset) |> ignore
+        let middleBorderLine = sprintf "%s├%s┤%s" borderColor (String.Join("┼", borderSegments)) Colors.reset
+        
+        let rowLines = 
+            state.Grid
+            |> Array.map (fun row ->
+                let cellContents = row |> Array.map (fun value -> renderCellContent value state.N state.M cellWidth)
+                sprintf "%s│%s%s│%s" borderColor (String.Join(sprintf "%s│%s" borderColor Colors.reset, cellContents)) borderColor Colors.reset)
+        
+        sb.Append(String.Join(sprintf "\n%s\n" middleBorderLine, rowLines)) |> ignore
+        sb.AppendLine() |> ignore
     
     let renderBottomBorder() =
-        sb.Append(sprintf "%s└" borderColor) |> ignore
-        for j in 0 .. state.Q - 1 do
-            sb.Append(borderWidth) |> ignore
-            if j < state.Q - 1 then sb.Append("┴") |> ignore else sb.Append("┘") |> ignore
-        sb.AppendLine(Colors.reset) |> ignore
+        sb.Append(sprintf "%s└%s┘%s" borderColor (String.Join("┴", borderSegments)) Colors.reset) |> ignore
+        sb.AppendLine() |> ignore
     
     renderTopBorder()
     renderGridContent()
@@ -381,7 +374,7 @@ let validateParameters n m p q =
     if not errors.IsEmpty then
         Console.ForegroundColor <- ConsoleColor.Red
         printfn "Parameter validation failed:"
-        errors |> List.iter (printfn "  • %s")
+        errors |> List.iter (printfn " - %s")
         Console.ResetColor()
         printfn "\nGame requirements:"
         printfn " - Base number (n) >= 2 (need at least binary merge)"
