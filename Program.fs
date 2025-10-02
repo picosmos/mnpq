@@ -29,24 +29,24 @@ type Direction =
 
 let rnd = Random()
 
-let safePowerLong n m =
+let safePowerLong m n =
     try
-        let result = Math.Pow(float n, float m)
+        let result = Math.Pow(float m, float n)
         if result > float Int64.MaxValue then Int64.MaxValue
         else int64 result
     with
     | _ -> Int64.MaxValue
 
-let getColorCode value n m =
+let getColorCode value m n =
     if value = 0 then Colors.rgb 64 64 64  // Dark gray for empty cells
     else
-        let target = safePowerLong n m
-        let doubleTarget = safePowerLong n (2 * m)
+        let target = safePowerLong m n
+        let doubleTarget = safePowerLong m (2 * n)
         
         if int64 value <= target then
-            // Gradient from beige to red for values up to n^m
-            let logValue = Math.Log(float value) / Math.Log(float n)
-            let progress = logValue / (float m)
+            // Gradient from beige to red for values up to m^n
+            let logValue = Math.Log(float value) / Math.Log(float m)
+            let progress = logValue / (float n)
             let t = max 0.0 (min 1.0 progress)
             
             // Color stops: Beige → Light Orange → Orange → Red → Dark Red
@@ -62,23 +62,23 @@ let getColorCode value n m =
             
             Colors.rgb r g b
         elif int64 value <= doubleTarget then
-            // Gradient from violet to deep purple for values above n^m
-            let logValue = Math.Log(float value) / Math.Log(float n)
-            let progress = (logValue - (float m)) / (float m)
+            // Gradient from violet to deep purple for values above m^n
+            let logValue = Math.Log(float value) / Math.Log(float m)
+            let progress = (logValue - (float n)) / (float n)
             let t = max 0.0 (min 1.0 progress)
 
             let (r, g, b) = Colors.interpolateRgb (148, 0, 211) (75, 0, 130) t  // Violet to Indigo
             Colors.rgb r g b
         else
             // Electric colors for extremely high values
-            let logValue = Math.Log(float value) / Math.Log(float n)
-            let progress = (logValue - (float (2 * m))) / (float m)
+            let logValue = Math.Log(float value) / Math.Log(float m)
+            let progress = (logValue - (float (2 * n))) / (float n)
             let t = max 0.0 (min 1.0 progress)
             
             let (r, g, b) = Colors.interpolateRgb (0, 191, 255) (0, 255, 255) t  // Deep Sky Blue to Cyan
             Colors.rgb r g b
 
-let getColorAnsi value n m = getColorCode value n m
+let getColorAnsi value m n = getColorCode value m n
 
 let getCellWidth (grid: GridArray) =
     let maxValue = 
@@ -156,8 +156,8 @@ let renderGridAsString (state: GameState) : string =
         sb.AppendLine() |> ignore
 
     let renderGridContent() =
-        let renderCellContent value n m cellWidth =
-            let colorCode = getColorAnsi value n m
+        let renderCellContent value m n cellWidth =
+            let colorCode = getColorAnsi value m n
             let displayValue = 
                 if value = 0 then 
                     String.replicate cellWidth " " 
@@ -171,7 +171,7 @@ let renderGridAsString (state: GameState) : string =
         let rowLines = 
             state.Grid
             |> Array.map (fun row ->
-                let cellContents = row |> Array.map (fun value -> renderCellContent value state.N state.M cellWidth)
+                let cellContents = row |> Array.map (fun value -> renderCellContent value state.M state.N cellWidth)
                 sprintf "%s│%s%s│%s" borderColor (String.Join(sprintf "%s│%s" borderColor Colors.reset, cellContents)) borderColor Colors.reset)
         
         sb.Append(String.Join(sprintf "\n%s\n" middleBorderLine, rowLines)) |> ignore
@@ -311,12 +311,12 @@ let rec gameLoop state =
             gameLoop { newState with TurnsPlayed = newState.TurnsPlayed + 1 }
 
 // Initialize game state
-let initializeGame n m p q =
+let initializeGame m n p q =
     let emptyGrid = Array.init p (fun _ -> Array.create q 0)
     let initialState = {
         Grid = emptyGrid
-        N = n
-        M = m 
+        N = m
+        M = n 
         P = p
         Q = q
         HasWon = false
@@ -363,12 +363,12 @@ let printGameResult (result: GameResult) =
     printfn ""
 
 // Validate command line parameters
-let validateParameters n m p q =
+let validateParameters m n p q =
     let errors = [
-        if n < 2 then yield sprintf "Base number (n) must be >= 2, got %d" n
-        if m < 2 then yield sprintf "Winner exponent (m) must be >= 2, got %d" m
-        if p < n then yield sprintf "Grid height (p) must be >= n (%d), got %d" n p
-        if q < n then yield sprintf "Grid width (q) must be >= n (%d), got %d" n q
+        if m < 2 then yield sprintf "Base number (m) must be >= 2, got %d" m
+        if n < 2 then yield sprintf "Winner exponent (n) must be >= 2, got %d" n
+        if p < m then yield sprintf "Grid height (p) must be >= m (%d), got %d" m p
+        if q < m then yield sprintf "Grid width (q) must be >= m (%d), got %d" m q
     ]
     
     if not errors.IsEmpty then
@@ -377,18 +377,18 @@ let validateParameters n m p q =
         errors |> List.iter (printfn " - %s")
         Console.ResetColor()
         printfn "\nGame requirements:"
-        printfn " - Base number (n) >= 2 (need at least binary merge)"
-        printfn " - Winner exponent (m) >= 2 (meaningful target)"
-        printfn " - Grid height (p) >= n (fit merge sequences)"
-        printfn " - Grid width (q) >= n (fit merge sequences)"
+        printfn " - Base number (m) >= 2 (need at least binary merge)"
+        printfn " - Winner exponent (n) >= 2 (meaningful target)"
+        printfn " - Grid height (p) >= m (fit merge sequences)"
+        printfn " - Grid width (q) >= m (fit merge sequences)"
         false
     else
         true
 
 [<EntryPoint>]
 let main args =
-    let nOption = Option<int>("-n", getDefaultValue = (fun () -> 2), description = "Base number")
-    let mOption = Option<int>("-m", getDefaultValue = (fun () -> 11), description = "Winner exponent")
+    let nOption = Option<int>("-n", getDefaultValue = (fun () -> 11), description = "Winner exponent")
+    let mOption = Option<int>("-m", getDefaultValue = (fun () -> 2), description = "Base number")
     let pOption = Option<int>("-p", getDefaultValue = (fun () -> 4), description = "Grid height")
     let qOption = Option<int>("-q", getDefaultValue = (fun () -> 4), description = "Grid width")
 
@@ -399,9 +399,9 @@ let main args =
     rootCommand.AddOption(qOption)
     
     rootCommand.SetHandler(Action<int, int, int, int>(fun n m p q ->
-        if validateParameters n m p q then
+        if validateParameters m n p q then
             printfn "Starting MNPQ game with n=%d, m=%d, p=%d, q=%d" n m p q
-            printfn "Goal: Reach %d to win!" (safePowerLong n m)
+            printfn "Goal: Reach %d to win!" (safePowerLong m n)
             printfn "Press any key to start..."
             Console.ReadKey() |> ignore
             
@@ -415,7 +415,7 @@ let main args =
             )
             
             try
-                let initialState = initializeGame n m p q
+                let initialState = initializeGame m n p q
                 let result = gameLoop initialState
                 gameResult <- Some result
                 result
