@@ -17,6 +17,12 @@ type GameStatus =
     | Won
     | GameOver
 
+type Direction =
+    | Left
+    | Right
+    | Up
+    | Down
+
 // Random number generator
 let rnd = Random()
 
@@ -152,22 +158,21 @@ let gridsEqual (grid1: int[][]) (grid2: int[][]) =
 let transformState direction state =
     let grid = state.Grid
     match direction with
-    | "left" -> 
+    | Left -> 
         { state with Grid = merge state.N grid }
-    | "right" ->
+    | Right ->
         let rotated = rotate >> rotate
         { state with Grid = grid |> rotated |> merge state.N |> rotated }
-    | "down" ->
+    | Down ->
         let transform = rotate >> merge state.N >> rotate >> rotate >> rotate
         { state with Grid = transform grid }
-    | "up" ->
+    | Up ->
         let transform = rotate >> rotate >> rotate >> merge state.N >> rotate
         { state with Grid = transform grid }
-    | _ -> state
 
 // Check if game is over (no moves possible)
 let isGameOver state =
-    let directions = ["left"; "right"; "up"; "down"]
+    let directions = [Left; Right; Up; Down]
     directions |> List.forall (fun dir -> 
         let newGrid = (transformState dir state).Grid
         gridsEqual state.Grid newGrid)
@@ -177,20 +182,27 @@ let checkWin state =
     let target = pown state.N state.M
     state.Grid |> Array.exists (Array.exists ((=) target))
 
+// Input result type
+type InputResult =
+    | Move of Direction
+    | Quit
+    | Continue
+    | Invalid
+
 // Get user input
 let getUserInput () =
     printf "Use arrow keys to move, 'q' to quit: "
     let key = Console.ReadKey(true)
     match key.Key with
-    | ConsoleKey.LeftArrow -> Some "left"
-    | ConsoleKey.RightArrow -> Some "right"
-    | ConsoleKey.UpArrow -> Some "up"
-    | ConsoleKey.DownArrow -> Some "down"
+    | ConsoleKey.LeftArrow -> Move Left
+    | ConsoleKey.RightArrow -> Move Right
+    | ConsoleKey.UpArrow -> Move Up
+    | ConsoleKey.DownArrow -> Move Down
     | ConsoleKey.Q -> 
         printf "\nAre you sure you want to quit? (y/N): "
         let confirm = Console.ReadLine()
-        if confirm.ToLower() = "y" then None else Some "continue"
-    | _ -> Some "invalid"
+        if confirm.ToLower() = "y" then Quit else Continue
+    | _ -> Invalid
 
 // Main game loop (recursive)
 let rec gameLoop state =
@@ -219,12 +231,12 @@ let rec gameLoop state =
     else
         // Get user input
         match getUserInput() with
-        | None -> printfn "\nThanks for playing!"
-        | Some "continue" -> gameLoop updatedState
-        | Some "invalid" -> 
+        | Quit -> printfn "\nThanks for playing!"
+        | Continue -> gameLoop updatedState
+        | Invalid -> 
             printfn "\nInvalid input. Use arrow keys or 'q' to quit."
             gameLoop updatedState
-        | Some direction ->
+        | Move direction ->
             // Transform state
             let oldGrid = updatedState.Grid
             let newState = transformState direction updatedState
