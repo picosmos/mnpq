@@ -31,3 +31,10 @@ module Screen =
     let exitFullScreen () =
         printf "%s%s" showCursor exitAlternateScreen
         Console.Out.Flush()
+
+module Input =
+    open System
+
+    let clearInputBuffer () =
+        while Console.KeyAvailable do
+            Console.ReadKey(true) |> ignore

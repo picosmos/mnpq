@@ -1,4 +1,4 @@
-﻿module picosmos
+﻿module picosmos.MNPQ
 
 open System
 open System.CommandLine
@@ -199,46 +199,34 @@ let renderAnimated oldState newState =
     // todo: implement
     ()
 
-// Check if two grids are equal
 let gridsEqual (grid1: GridArray) (grid2: GridArray) =
     Array.forall2 (Array.forall2 (=)) grid1 grid2
 
-// Transform state based on direction
 let transformState direction state =
-    let grid = state.Grid
-    match direction with
-    | Left -> 
-        { state with Grid = merge state.N grid }
-    | Right ->
-        let rotated = rotate >> rotate
-        { state with Grid = grid |> rotated |> merge state.N |> rotated }
-    | Down ->
-        let transform = rotate >> merge state.N >> rotate >> rotate >> rotate
-        { state with Grid = transform grid }
-    | Up ->
-        let transform = rotate >> rotate >> rotate >> merge state.N >> rotate
-        { state with Grid = transform grid }
+    let transformation = 
+        match direction with
+        | Left -> merge state.N
+        | Right -> rotate >> rotate >> merge state.N >> rotate >> rotate
+        | Down -> rotate >> merge state.N >> rotate >> rotate >> rotate
+        | Up -> rotate >> rotate >> rotate >> merge state.N >> rotate
+    { state with Grid = transformation state.Grid }
 
-// Check if game is over (no moves possible)
 let isGameOver state =
     let directions = [Left; Right; Up; Down]
     directions |> List.forall (fun dir -> 
         let newGrid = (transformState dir state).Grid
         gridsEqual state.Grid newGrid)
 
-// Check win condition
 let checkWin state =
     let target = safePowerLong state.N state.M
     state.Grid |> Array.exists (Array.exists (fun v -> int64 v = target))
 
-// Input result type
 type InputResult =
     | Move of Direction
     | Quit
     | Continue
     | Invalid
 
-// Game result type
 type GameResult = {
     FinalState: GameState
     Outcome: GameOutcome
@@ -251,22 +239,12 @@ and GameOutcome =
     | PlayerQuit  
     | GameOver
 
-// Clear any buffered input from the console
-let clearInputBuffer () =
-    while Console.KeyAvailable do
-        Console.ReadKey(true) |> ignore
 
 // Get user input (clears buffer first to prevent input accumulation)
 let getUserInput () =
-    // Clear any buffered keys first
-    clearInputBuffer()
-    
     printf "Use arrow keys to move, 'q' to quit: "
     let key = Console.ReadKey(true)
-    
-    // Clear buffer again after reading to prevent double input
-    clearInputBuffer()
-    
+        
     match key.Key with
     | ConsoleKey.LeftArrow -> Move Left
     | ConsoleKey.RightArrow -> Move Right
@@ -280,10 +258,6 @@ let getUserInput () =
 
 // Input loop that repeats until a valid transformation occurs
 let rec getValidMove state =
-    // Clear any residual input
-    clearInputBuffer()
-    
-    // Get user input
     match getUserInput() with
     | Quit -> None
     | Continue -> getValidMove state
@@ -304,10 +278,9 @@ let rec getValidMove state =
 
 // Main game loop (recursive) - now returns GameResult
 let rec gameLoop state =
-    // Spawn number only at the start of each turn
+    Input.clearInputBuffer()
     let stateWithNumber = spawnNumber state
     
-    // Render current state
     renderGrid stateWithNumber
     
     // Check win condition
@@ -329,7 +302,6 @@ let rec gameLoop state =
         let maxValue = updatedState.Grid |> Array.collect id |> Array.max
         { FinalState = updatedState; Outcome = GameOver; MaxValue = maxValue; TurnsPlayed = updatedState.TurnsPlayed }
     else
-        // Keep asking for input until a valid move is made or user quits
         match getValidMove updatedState with
         | None -> 
             printfn "\nThanks for playing!"
@@ -337,11 +309,7 @@ let rec gameLoop state =
             let outcome = if updatedState.HasWon then PlayerWon else PlayerQuit
             { FinalState = updatedState; Outcome = outcome; MaxValue = maxValue; TurnsPlayed = updatedState.TurnsPlayed }
         | Some newState ->
-            // Animate the successful transformation
             renderAnimated updatedState newState
-            // Clear any accumulated input after animation
-            clearInputBuffer()
-            // Continue game loop with the new state (increment turn counter)
             gameLoop { newState with TurnsPlayed = newState.TurnsPlayed + 1 }
 
 // Initialize game state
