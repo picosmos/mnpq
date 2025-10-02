@@ -142,7 +142,7 @@ let merge n (grid: GridArray) : GridArray =
 
 let borderColor = Colors.rgb 128 128 128
 
-let renderGrid (state: GameState) =
+let renderGridAsString (state: GameState) : string = 
     let sb = Text.StringBuilder()
     let cellWidth = getCellWidth state.Grid
     let borderWidth = String.replicate cellWidth "─"
@@ -188,12 +188,16 @@ let renderGrid (state: GameState) =
             if j < state.Q - 1 then sb.Append("┴") |> ignore else sb.Append("┘") |> ignore
         sb.AppendLine(Colors.reset) |> ignore
     
-    renderTopBorder();
+    renderTopBorder()
     renderGridContent()
     renderBottomBorder()
 
-    printf "%s" Screen.clearScreen
-    printf "%s" (sb.ToString())
+    sb.ToString()
+
+let renderGrid (state: GameState) : unit =
+    let output = Screen.clearScreen + renderGridAsString state
+    Console.Write output
+    Console.Out.Flush()
 
 let renderAnimated oldState newState =
     // todo: implement
@@ -292,7 +296,8 @@ let rec gameLoop state =
         printfn "\nCONGRATULATIONS! You reached %d! You won the game!" (safePowerLong updatedState.N updatedState.M)
         Console.ResetColor()
         printfn "You can continue playing..."
-        System.Threading.Thread.Sleep(2000)
+        printfn "Press any key to continue..."
+        Console.ReadKey() |> ignore
     
     // Check game over
     if isGameOver updatedState then
@@ -347,6 +352,9 @@ let printGameResult (result: GameResult) =
         Console.ForegroundColor <- ConsoleColor.Red
         printfn "Game Over - No more moves possible"
         Console.ResetColor()
+    
+    printfn "\nFinal Game Board:"
+    printf "%s" (renderGridAsString result.FinalState)
     
     printfn "\nGame Statistics:"
     printfn " - Turns played: %d" result.TurnsPlayed
@@ -404,14 +412,11 @@ let main args =
             printfn "Press any key to start..."
             Console.ReadKey() |> ignore
             
-            // Enter full-screen mode
             Screen.enterFullScreen()
             
-            // Handle Ctrl+C gracefully
             let mutable gameResult = None
             Console.CancelKeyPress.Add(fun args ->
                 Screen.exitFullScreen()
-                // Print result if available
                 gameResult |> Option.iter printGameResult
                 args.Cancel <- false
             )
@@ -422,7 +427,6 @@ let main args =
                 gameResult <- Some result
                 result
             finally
-                // Always restore terminal on exit
                 Screen.exitFullScreen()
             |> printGameResult
         else
