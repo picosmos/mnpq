@@ -26,28 +26,62 @@ type Direction =
 // Random number generator
 let rnd = Random()
 
-// Color codes for console output - scale from white to red at n^m, then violet/blue to n^(2m)
-let getColor value n m =
-    if value = 0 then ConsoleColor.Black
-    else
-        let target = pown n m
-        let doubleTarget = pown n (2 * m)
-        if value <= target then
-            // Scale from white to red for values up to n^m
-            let logValue = Math.Log(float value) / Math.Log(float n)
-            let scaledValue = logValue / (float m)
-            match scaledValue with
-            | x when x <= 0.2 -> ConsoleColor.White        // beige/white
-            | x when x <= 0.4 -> ConsoleColor.Yellow       
-            | x when x <= 0.6 -> ConsoleColor.DarkYellow   // orange
-            | x when x <= 0.8 -> ConsoleColor.Red
-            | _ -> ConsoleColor.DarkRed                     // dark red at n^m
+// Modern ANSI color system with RGB support
+module Colors =
+    // ANSI escape codes for 24-bit RGB colors
+    let rgb r g b = sprintf "\x1b[38;2;%d;%d;%dm" r g b
+    let bgRgb r g b = sprintf "\x1b[48;2;%d;%d;%dm" r g b
+    let reset = "\x1b[0m"
+    
+    // Interpolate between two RGB colors
+    let interpolateRgb (r1, g1, b1) (r2, g2, b2) t =
+        let lerp a b t = int (float a + t * (float b - float a))
+        (lerp r1 r2 t, lerp g1 g2 t, lerp b1 b2 t)
+    
+    // Color palette for different value ranges
+    let getColorCode value n m =
+        if value = 0 then rgb 64 64 64  // Dark gray for empty cells
         else
-            // Scale from violet to blue for values above n^m up to n^(2m)
-            if value <= doubleTarget then
-                ConsoleColor.Magenta                        // violet
+            let target = pown n m
+            let doubleTarget = pown n (2 * m)
+            
+            if value <= target then
+                // Gradient from beige to red for values up to n^m
+                let logValue = Math.Log(float value) / Math.Log(float n)
+                let progress = logValue / (float m)
+                let t = max 0.0 (min 1.0 progress)
+                
+                // Color stops: Beige → Light Orange → Orange → Red → Dark Red
+                let (r, g, b) = 
+                    if t <= 0.25 then
+                        interpolateRgb (245, 245, 220) (255, 218, 185) (t * 4.0)  // Beige to Peach
+                    elif t <= 0.5 then
+                        interpolateRgb (255, 218, 185) (255, 165, 0) ((t - 0.25) * 4.0)  // Peach to Orange
+                    elif t <= 0.75 then
+                        interpolateRgb (255, 165, 0) (255, 69, 0) ((t - 0.5) * 4.0)  // Orange to Red-Orange
+                    else
+                        interpolateRgb (255, 69, 0) (139, 0, 0) ((t - 0.75) * 4.0)  // Red-Orange to Dark Red
+                
+                rgb r g b
+            elif value <= doubleTarget then
+                // Gradient from violet to deep purple for values above n^m
+                let logValue = Math.Log(float value) / Math.Log(float n)
+                let progress = (logValue - (float m)) / (float m)
+                let t = max 0.0 (min 1.0 progress)
+                
+                let (r, g, b) = interpolateRgb (148, 0, 211) (75, 0, 130) t  // Violet to Indigo
+                rgb r g b
             else
-                ConsoleColor.Blue                           // blue for very high values
+                // Electric colors for extremely high values
+                let logValue = Math.Log(float value) / Math.Log(float n)
+                let progress = (logValue - (float (2 * m))) / (float m)
+                let t = max 0.0 (min 1.0 progress)
+                
+                let (r, g, b) = interpolateRgb (0, 191, 255) (0, 255, 255) t  // Deep Sky Blue to Cyan
+                rgb r g b
+
+// Enhanced color function that returns ANSI codes
+let getColorAnsi value n m = Colors.getColorCode value n m
 
 // Calculate appropriate cell width based on the largest number in the grid
 let getCellWidth (grid: int[][]) =
@@ -118,9 +152,9 @@ let mergeRow n (row: int[]) =
 let merge n (grid: int[][]) =
     grid |> Array.map (mergeRow n)
 
-// Render a single cell with borders and colors
+// Render a single cell with borders and colors using ANSI
 let renderCell value n m cellWidth =
-    let color = getColor value n m
+    let colorCode = getColorAnsi value n m
     let displayValue = 
         if value = 0 then 
             String.replicate cellWidth " " 
@@ -128,29 +162,23 @@ let renderCell value n m cellWidth =
             let valueStr = value.ToString()
             valueStr.PadLeft(cellWidth)
     
-    // Render border in white, content in color
-    Console.ForegroundColor <- ConsoleColor.White
-    printf "│"
-    Console.ForegroundColor <- color
-    printf "%s" displayValue
-    Console.ResetColor()
+    // Render border in medium grey, content with RGB color
+    printf "%s│%s%s%s" (Colors.rgb 128 128 128) colorCode displayValue Colors.reset
 
-// Render the entire grid
+// Render the entire grid with modern ANSI colors
 let renderGrid (state: GameState) =
     Console.Clear()
     
     let cellWidth = getCellWidth state.Grid
     let borderWidth = String.replicate cellWidth "─"
-    
-    // Set border color to white
-    Console.ForegroundColor <- ConsoleColor.White
+    let greyColor = Colors.rgb 128 128 128  // Medium grey for grid borders
     
     // Top border
-    printf "┌"
+    printf "%s┌" greyColor
     for j in 0 .. state.Q - 1 do
         printf "%s" borderWidth
         if j < state.Q - 1 then printf "┬" else printf "┐"
-    printfn ""
+    printfn "%s" Colors.reset
     
     // Grid content
     for i in 0 .. state.P - 1 do
@@ -158,25 +186,23 @@ let renderGrid (state: GameState) =
             if j < state.Q then
                 renderCell state.Grid.[i].[j] state.N state.M cellWidth
             else
-                printf "│"
+                printf "%s│%s" greyColor Colors.reset
         printfn ""
         
         // Horizontal separator (except for last row)
         if i < state.P - 1 then
-            printf "├"
+            printf "%s├" greyColor
             for j in 0 .. state.Q - 1 do
                 printf "%s" borderWidth
                 if j < state.Q - 1 then printf "┼" else printf "┤"
-            printfn ""
+            printfn "%s" Colors.reset
     
     // Bottom border
-    printf "└"
+    printf "%s└" greyColor
     for j in 0 .. state.Q - 1 do
         printf "%s" borderWidth
         if j < state.Q - 1 then printf "┴" else printf "┘"
-    printfn ""
-    
-    Console.ResetColor()
+    printfn "%s" Colors.reset
 
 // Animated render (simplified - shows before and after states)
 let renderAnimated oldState newState =
