@@ -10,6 +10,7 @@ type GameState = {
     P: int
     Q: int
     HasWon: bool
+    TurnsPlayed: int
 }
 
 type GameStatus = 
@@ -88,6 +89,24 @@ module Colors =
                 
                 let (r, g, b) = interpolateRgb (0, 191, 255) (0, 255, 255) t  // Deep Sky Blue to Cyan
                 rgb r g b
+
+module Screen =
+    // ANSI escape sequences for alternate screen buffer
+    let enterAlternateScreen = "\x1b[?1049h"  // Enter alternate screen buffer
+    let exitAlternateScreen = "\x1b[?1049l"   // Exit alternate screen buffer
+    let clearScreen = "\x1b[2J\x1b[H"         // Clear screen and move cursor to top-left
+    let hideCursor = "\x1b[?25l"              // Hide cursor
+    let showCursor = "\x1b[?25h"              // Show cursor
+    
+    // Initialize full-screen mode
+    let enterFullScreen () =
+        printf "%s%s%s" enterAlternateScreen clearScreen hideCursor
+        Console.Out.Flush()
+    
+    // Exit full-screen mode and restore terminal
+    let exitFullScreen () =
+        printf "%s%s" showCursor exitAlternateScreen
+        Console.Out.Flush()
 
 // Enhanced color function that returns ANSI codes
 let getColorAnsi value n m = Colors.getColorCode value n m
@@ -177,7 +196,7 @@ let renderCellToString value n m cellWidth =
 
 // Render the entire grid with modern ANSI colors using StringBuilder
 let renderGrid (state: GameState) =
-    Console.Clear()
+    printf "%s" Screen.clearScreen
     
     let sb = System.Text.StringBuilder()
     let cellWidth = getCellWidth state.Grid
@@ -265,6 +284,19 @@ type InputResult =
     | Continue
     | Invalid
 
+// Game result type
+type GameResult = {
+    FinalState: GameState
+    Outcome: GameOutcome
+    MaxValue: int
+    TurnsPlayed: int
+}
+
+and GameOutcome =
+    | PlayerWon
+    | PlayerQuit  
+    | GameOver
+
 // Clear any buffered input from the console
 let clearInputBuffer () =
     while Console.KeyAvailable do
@@ -316,7 +348,7 @@ let rec getValidMove state =
             printfn "\nNo change possible in that direction."
             getValidMove state  // Ask for input again
 
-// Main game loop (recursive)
+// Main game loop (recursive) - now returns GameResult
 let rec gameLoop state =
     // Spawn number only at the start of each turn
     let stateWithNumber = spawnNumber state
@@ -340,17 +372,23 @@ let rec gameLoop state =
         Console.ForegroundColor <- ConsoleColor.Red
         printfn "\nGAME OVER! No more moves possible."
         Console.ResetColor()
+        let maxValue = updatedState.Grid |> Array.collect id |> Array.max
+        { FinalState = updatedState; Outcome = GameOver; MaxValue = maxValue; TurnsPlayed = updatedState.TurnsPlayed }
     else
         // Keep asking for input until a valid move is made or user quits
         match getValidMove updatedState with
-        | None -> printfn "\nThanks for playing!"  // User quit
+        | None -> 
+            printfn "\nThanks for playing!"
+            let maxValue = updatedState.Grid |> Array.collect id |> Array.max
+            let outcome = if updatedState.HasWon then PlayerWon else PlayerQuit
+            { FinalState = updatedState; Outcome = outcome; MaxValue = maxValue; TurnsPlayed = updatedState.TurnsPlayed }
         | Some newState ->
             // Animate the successful transformation
             renderAnimated updatedState newState
             // Clear any accumulated input after animation
             clearInputBuffer()
-            // Continue game loop with the new state
-            gameLoop newState
+            // Continue game loop with the new state (increment turn counter)
+            gameLoop { newState with TurnsPlayed = newState.TurnsPlayed + 1 }
 
 // Initialize game state
 let initializeGame n m p q =
@@ -362,9 +400,44 @@ let initializeGame n m p q =
         P = p
         Q = q
         HasWon = false
+        TurnsPlayed = 0
     }
     // Spawn two initial numbers
     initialState |> spawnNumber |> spawnNumber
+
+// Print game results to standard screen buffer
+let printGameResult (result: GameResult) =
+    printfn ""
+    printfn "%s" (String.replicate 50 "=")
+    printfn "MNPQ GAME COMPLETED"
+    printfn "%s" (String.replicate 50 "=")
+    
+    match result.Outcome with
+    | PlayerWon ->
+        Console.ForegroundColor <- ConsoleColor.Green
+        printfn "VICTORY! You reached the target!"
+        Console.ResetColor()
+    | PlayerQuit ->
+        Console.ForegroundColor <- ConsoleColor.Yellow
+        printfn "Game ended by player choice"
+        Console.ResetColor()
+    | GameOver ->
+        Console.ForegroundColor <- ConsoleColor.Red
+        printfn "Game Over - No more moves possible"
+        Console.ResetColor()
+    
+    printfn "\nGame Statistics:"
+    printfn " - Turns played: %d" result.TurnsPlayed
+    printfn " - Highest tile: %d" result.MaxValue
+    printfn " - Target value: %d" (safePowerLong result.FinalState.N result.FinalState.M)
+    printfn " - Grid size: %dx%d" result.FinalState.P result.FinalState.Q
+    printfn " - Base number: %d" result.FinalState.N
+    
+    if result.FinalState.HasWon then
+        printfn " - Achievement: Winner! 🏆"
+    
+    printfn "%s" (String.replicate 50 "=")
+    printfn ""
 
 // Validate command line parameters
 let validateParameters n m p q =
@@ -410,8 +483,27 @@ let main args =
             printfn "Press any key to start..."
             Console.ReadKey() |> ignore
             
-            let initialState = initializeGame n m p q
-            gameLoop initialState
+            // Enter full-screen mode
+            Screen.enterFullScreen()
+            
+            // Handle Ctrl+C gracefully
+            let mutable gameResult = None
+            Console.CancelKeyPress.Add(fun args ->
+                Screen.exitFullScreen()
+                // Print result if available
+                gameResult |> Option.iter printGameResult
+                args.Cancel <- false
+            )
+            
+            try
+                let initialState = initializeGame n m p q
+                let result = gameLoop initialState
+                gameResult <- Some result
+                result
+            finally
+                // Always restore terminal on exit
+                Screen.exitFullScreen()
+            |> printGameResult
         else
             printfn "\nUse --help for more information about valid parameter ranges."
     ), nOption, mOption, pOption, qOption)
