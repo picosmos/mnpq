@@ -387,14 +387,14 @@ let validateParameters m n p q =
 
 [<EntryPoint>]
 let main args =
-    let nOption = Option<int>("-n", getDefaultValue = (fun () -> 11), description = "Winner exponent")
-    let mOption = Option<int>("-m", getDefaultValue = (fun () -> 2), description = "Base number")
-    let pOption = Option<int>("-p", getDefaultValue = (fun () -> 4), description = "Grid height")
-    let qOption = Option<int>("-q", getDefaultValue = (fun () -> 4), description = "Grid width")
+    let mOption = Option<int>([|"--base"; "-b"; "-m"|], getDefaultValue = (fun () -> 2), description = "Base number")
+    let nOption = Option<int>([|"--exponent"; "-e"; "-n"|], getDefaultValue = (fun () -> 11), description = "Winner exponent")
+    let pOption = Option<int>([|"--height"; "-h"; "-p" |], getDefaultValue = (fun () -> 4), description = "Grid height")
+    let qOption = Option<int>([|"--width"; "-w"; "-q"|], getDefaultValue = (fun () -> 4), description = "Grid width")
 
     let rootCommand = RootCommand("MNPQ - A customizable 2048-like game")
-    rootCommand.AddOption(nOption)
     rootCommand.AddOption(mOption) 
+    rootCommand.AddOption(nOption)
     rootCommand.AddOption(pOption)
     rootCommand.AddOption(qOption)
     
