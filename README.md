@@ -43,12 +43,6 @@ Invoke-WebRequest -Uri "https://github.com/picosmos/mnpq/releases/download/relea
 ./mnpg.exe
 ```
 
-#### Using winget (Windows)
-```bash
-# Coming soon - winget package pending
-winget install picosmos.mnpq
-```
-
 ### Build from Source
 
 ```bash
