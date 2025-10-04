@@ -6,6 +6,9 @@
     <AssemblyVersion>0.9.0.0</AssemblyVersion>
     <FileVersion>0.9.0.0</FileVersion>
     <Version>0.9.0</Version>
+    <PublishTrimmed>true</PublishTrimmed>
+    <PublishSingleFile>true</PublishSingleFile>
+    <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="CommandLineInterface.fs" />
