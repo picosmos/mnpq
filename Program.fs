@@ -398,9 +398,9 @@ let main args =
     rootCommand.AddOption(pOption)
     rootCommand.AddOption(qOption)
     
-    rootCommand.SetHandler(Action<int, int, int, int>(fun n m p q ->
+    rootCommand.SetHandler(Action<int, int, int, int>(fun m n p q ->
         if validateParameters m n p q then
-            printfn "Starting MNPQ game with n=%d, m=%d, p=%d, q=%d" n m p q
+            printfn "Starting MNPQ game with m=%d, n=%d, p=%d, q=%d" m n p q
             printfn "Goal: Reach %d to win!" (safePowerLong m n)
             printfn "Press any key to start..."
             Console.ReadKey() |> ignore
@@ -424,6 +424,6 @@ let main args =
             |> printGameResult
         else
             printfn "\nUse --help for more information about valid parameter ranges."
-    ), nOption, mOption, pOption, qOption)
+    ), mOption, nOption, pOption, qOption)
     
     rootCommand.Invoke(args)
