@@ -4,7 +4,52 @@ A terminal-based puzzle game written in F# with beautiful RGB colors and full-sc
 
 ## Quick Start
 
-### Clone and Run
+### Download Pre-built Binary (Recommended)
+
+Choose your platform and download and run the latest release:
+
+#### Linux x64
+```bash
+curl -L -o mnpg https://github.com/picosmos/mnpq/releases/download/release/mnpq.linux.x64
+chmod +x mnpg
+./mnpg
+```
+
+#### Linux ARM64
+```bash
+curl -L -o mnpg https://github.com/picosmos/mnpq/releases/download/release/mnpq.linux.arm64
+chmod +x mnpg
+./mnpg
+```
+
+#### macOS x64 (Intel)
+```bash
+curl -L -o mnpg https://github.com/picosmos/mnpq/releases/download/release/mnpq.osx.x64
+chmod +x mnpg
+./mnpg
+```
+
+#### macOS ARM64 (Apple Silicon)
+```bash
+curl -L -o mnpg https://github.com/picosmos/mnpq/releases/download/release/mnpq.osx.arm64
+chmod +x mnpg
+./mnpg
+```
+
+#### Windows x64
+```powershell
+# Using PowerShell
+Invoke-WebRequest -Uri "https://github.com/picosmos/mnpq/releases/download/release/mnpq.win.x64.exe" -OutFile "mnpg.exe"
+./mnpg.exe
+```
+
+#### Using winget (Windows)
+```bash
+# Coming soon - winget package pending
+winget install picosmos.mnpq
+```
+
+### Build from Source
 
 ```bash
 # Clone the repository
@@ -17,7 +62,7 @@ dotnet run
 
 ### Default Game (2048-like)
 ```bash
-dotnet run
+./mnpg
 ```
 - **Goal**: Reach 2048 (2¹¹) to win
 - **Grid**: 4×4 
@@ -45,33 +90,33 @@ The game accepts four customizable parameters:
 
 ### Classic 2048
 ```bash
-dotnet run -- -n 2 -n 11 -p 4 -q 4
+./mnpg -n 2 -n 11 -p 4 -q 4
 ```
 **Target**: 2048 on a 4×4 grid
 
-This is the same as running just `dotnet run`.
+This is the same as running just `./mnpg`.
 
 ### Easy Mode (Smaller Target)
 ```bash
-dotnet run -- -m 2 -n 6 -p 4 -q 4
+./mnpg -m 2 -n 6 -p 4 -q 4
 ```
 **Target**: 64 on a 4×4 grid
 
 ### Hard Mode (Larger Grid)
 ```bash
-dotnet run -- -m 2 -n 11 -p 6 -q 6
+./mnpg -m 2 -n 11 -p 6 -q 6
 ```
 **Target**: 2048 on a 6×6 grid
 
 ### Custom Game (Base 3)
 ```bash
-dotnet run -- -m 3 -n 6 -p 5 -q 5
+./mnpg -m 3 -n 6 -p 5 -q 5
 ```
 **Target**: 81 (3⁶) on a 5×5 grid with base-3 merging
 
 ### Extreme Challenge
 ```bash
-dotnet run -- -m 4 -n 4 -p 4 -q 4
+./mnpg -m 4 -n 4 -p 4 -q 4
 ```
 **Target**: 256 (4⁴) on a 4×4 grid
 
@@ -109,10 +154,28 @@ After each game, you'll see:
 ## Help
 
 ```bash
-dotnet run -- --help
+./mnpg --help
 ```
 
 Shows all available options and their descriptions.
+
+## File Integrity
+
+You can verify the downloaded files using their SHA256 checksums:
+
+- **mnpq.linux.arm64**: `3cd265374cee6f8c36d2209b488ca96f9eee288e6e432954de330c194f02d78d`
+- **mnpq.linux.x64**: `4066590a37862e0feb105557ded2e57d48c310d918d3f259bef90524ca9010ab`
+- **mnpq.osx.arm64**: `1c667fca606bccf85c00ebbcd738ebc05f4c549a214d4e7298938d35de5129ed`
+- **mnpq.osx.x64**: `906b6ec955f309f6023d80d51542d5acde2379023ee41864dd15ad6a641f97dd`
+- **mnpq.win.x64.exe**: `7403ae6c517b513164b6807d2d9588080bc1aa97a51cade2d031f4da93b29414`
+
+```bash
+# Verify checksum on Linux/macOS
+sha256sum mnpg
+
+# Verify checksum on Windows (PowerShell)
+Get-FileHash mnpg.exe -Algorithm SHA256
+```
 
 ---
 
