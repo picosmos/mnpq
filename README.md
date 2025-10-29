@@ -10,37 +10,37 @@ Choose your platform and download and run the latest release:
 
 #### Linux x64
 ```bash
-curl -L -o mnpg https://github.com/picosmos/mnpq/releases/download/release/mnpq.linux.x64
-chmod +x mnpg
-./mnpg
+curl -L -o mnpq https://github.com/picosmos/mnpq/releases/download/release/mnpq.linux.x64
+chmod +x mnpq
+./mnpq
 ```
 
 #### Linux ARM64
 ```bash
-curl -L -o mnpg https://github.com/picosmos/mnpq/releases/download/release/mnpq.linux.arm64
-chmod +x mnpg
-./mnpg
+curl -L -o mnpq https://github.com/picosmos/mnpq/releases/download/release/mnpq.linux.arm64
+chmod +x mnpq
+./mnpq
 ```
 
 #### macOS x64 (Intel)
 ```bash
-curl -L -o mnpg https://github.com/picosmos/mnpq/releases/download/release/mnpq.osx.x64
-chmod +x mnpg
-./mnpg
+curl -L -o mnpq https://github.com/picosmos/mnpq/releases/download/release/mnpq.osx.x64
+chmod +x mnpq
+./mnpq
 ```
 
 #### macOS ARM64 (Apple Silicon)
 ```bash
-curl -L -o mnpg https://github.com/picosmos/mnpq/releases/download/release/mnpq.osx.arm64
-chmod +x mnpg
-./mnpg
+curl -L -o mnpq https://github.com/picosmos/mnpq/releases/download/release/mnpq.osx.arm64
+chmod +x mnpq
+./mnpq
 ```
 
 #### Windows x64
 ```powershell
 # Using PowerShell
-Invoke-WebRequest -Uri "https://github.com/picosmos/mnpq/releases/download/release/mnpq.win.x64.exe" -OutFile "mnpg.exe"
-./mnpg.exe
+Invoke-WebRequest -Uri "https://github.com/picosmos/mnpq/releases/download/release/mnpq.win.x64.exe" -OutFile "mnpq.exe"
+./mnpq.exe
 ```
 
 ### Build from Source
@@ -56,7 +56,7 @@ dotnet run
 
 ### Default Game (2048-like)
 ```bash
-./mnpg
+./mnpq
 ```
 - **Goal**: Reach 2048 (2¹¹) to win
 - **Grid**: 4×4 
@@ -84,33 +84,33 @@ The game accepts four customizable parameters:
 
 ### Classic 2048
 ```bash
-./mnpg -n 2 -n 11 -p 4 -q 4
+./mnpq -n 2 -n 11 -p 4 -q 4
 ```
 **Target**: 2048 on a 4×4 grid
 
-This is the same as running just `./mnpg`.
+This is the same as running just `./mnpq`.
 
 ### Easy Mode (Smaller Target)
 ```bash
-./mnpg -m 2 -n 6 -p 4 -q 4
+./mnpq -m 2 -n 6 -p 4 -q 4
 ```
 **Target**: 64 on a 4×4 grid
 
 ### Hard Mode (Larger Grid)
 ```bash
-./mnpg -m 2 -n 11 -p 6 -q 6
+./mnpq -m 2 -n 11 -p 6 -q 6
 ```
 **Target**: 2048 on a 6×6 grid
 
 ### Custom Game (Base 3)
 ```bash
-./mnpg -m 3 -n 6 -p 5 -q 5
+./mnpq -m 3 -n 6 -p 5 -q 5
 ```
 **Target**: 81 (3⁶) on a 5×5 grid with base-3 merging
 
 ### Extreme Challenge
 ```bash
-./mnpg -m 4 -n 4 -p 4 -q 4
+./mnpq -m 4 -n 4 -p 4 -q 4
 ```
 **Target**: 256 (4⁴) on a 4×4 grid
 
@@ -148,7 +148,7 @@ After each game, you'll see:
 ## Help
 
 ```bash
-./mnpg --help
+./mnpq --help
 ```
 
 Shows all available options and their descriptions.
@@ -165,10 +165,10 @@ You can verify the downloaded files using their SHA256 checksums:
 
 ```bash
 # Verify checksum on Linux/macOS
-sha256sum mnpg
+sha256sum mnpq
 
 # Verify checksum on Windows (PowerShell)
-Get-FileHash mnpg.exe -Algorithm SHA256
+Get-FileHash mnpq.exe -Algorithm SHA256
 ```
 
 ---
